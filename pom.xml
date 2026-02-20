@@ -28,9 +28,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/skillsjars/skillsjars-maven-plugin.git</connection>
-        <developerConnection>scm:git:ssh://github.com:skillsjars/skillsjars-maven-plugin.git</developerConnection>
-        <url>https://github.com/skillsjars/skillsjars-maven-plugin/tree/main</url>
+        <connection>scm:git:https://github.com/skillsjars/skillsjars-maven-plugin.git</connection>
+        <developerConnection>scm:git:https://github.com/skillsjars/skillsjars-maven-plugin.git</developerConnection>
+        <url>https://github.com/skillsjars/skillsjars-maven-plugin</url>
     </scm>
 
     <properties>
