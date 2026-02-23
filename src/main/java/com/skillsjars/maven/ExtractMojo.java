@@ -2,6 +2,7 @@ package com.skillsjars.maven;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -30,6 +31,9 @@ public class ExtractMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
 
+    @Parameter(defaultValue = "${mojoExecution}", readonly = true)
+    private MojoExecution mojoExecution;
+
     // Package-private setters for testing
     void setDir(String dir) {
         this.dir = dir;
@@ -41,6 +45,10 @@ public class ExtractMojo extends AbstractMojo {
 
     void setProject(MavenProject project) {
         this.project = project;
+    }
+
+    void setMojoExecution(MojoExecution mojoExecution) {
+        this.mojoExecution = mojoExecution;
     }
 
     private static final String SKILLSJARS_GROUP = "com.skillsjars";
@@ -100,15 +108,31 @@ public class ExtractMojo extends AbstractMojo {
 
     private Set<Artifact> findSkillsJars(Set<String> allowedScopes) {
         Set<Artifact> result = new HashSet<>();
-        Set<Artifact> artifacts = project.getArtifacts();
-        
-        for (Artifact artifact : artifacts) {
-            if (SKILLSJARS_GROUP.equals(artifact.getGroupId()) && 
+
+        // Collect from project dependencies (compile, provided, runtime, test, system)
+        Set<Artifact> projectArtifacts = project.getArtifacts();
+        for (Artifact artifact : projectArtifacts) {
+            if (SKILLSJARS_GROUP.equals(artifact.getGroupId()) &&
                 allowedScopes.contains(artifact.getScope())) {
                 result.add(artifact);
             }
         }
-        
+
+        // Collect from plugin dependencies (<plugin><dependencies>...</dependencies></plugin>)
+        if (mojoExecution != null) {
+            var mojoDescriptor = mojoExecution.getMojoDescriptor();
+            if (mojoDescriptor != null) {
+                var pluginDescriptor = mojoDescriptor.getPluginDescriptor();
+                if (pluginDescriptor != null && pluginDescriptor.getArtifacts() != null) {
+                    for (Artifact artifact : pluginDescriptor.getArtifacts()) {
+                        if (SKILLSJARS_GROUP.equals(artifact.getGroupId())) {
+                            result.add(artifact);
+                        }
+                    }
+                }
+            }
+        }
+
         return result;
     }
 

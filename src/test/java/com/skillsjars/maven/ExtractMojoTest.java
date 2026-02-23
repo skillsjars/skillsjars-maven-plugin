@@ -3,7 +3,10 @@ package com.skillsjars.maven;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.DefaultArtifactHandler;
+import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.descriptor.MojoDescriptor;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.project.MavenProject;
 import org.junit.After;
 import org.junit.Before;
@@ -14,6 +17,7 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.JarEntry;
@@ -178,6 +182,47 @@ public class ExtractMojoTest {
         } catch (MojoExecutionException e) {
             assertTrue(e.getMessage().contains("conflict"));
         }
+    }
+
+    @Test
+    public void testExtractSkillsJarFromPluginDependencies() throws Exception {
+        File jarFile = createTestSkillsJar("plugin-skill", "META-INF/skills/");
+        File outputDir = new File(testDir, "output");
+
+        Artifact pluginArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "skill2",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        pluginArtifact.setFile(jarFile);
+
+        PluginDescriptor pluginDescriptor = new PluginDescriptor();
+        pluginDescriptor.setArtifacts(Collections.singletonList(pluginArtifact));
+
+        MojoDescriptor mojoDescriptor = new MojoDescriptor();
+        mojoDescriptor.setPluginDescriptor(pluginDescriptor);
+
+        MojoExecution mojoExecution = new MojoExecution(mojoDescriptor);
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        project.setArtifacts(new HashSet<>());
+        mojo.setProject(project);
+        mojo.setMojoExecution(mojoExecution);
+
+        mojo.execute();
+
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("SKILL.md from plugin dependency should exist", Files.exists(extractedSkillMd));
+
+        Path extractedFile = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "test.txt");
+        assertTrue("Extracted file from plugin dependency should exist", Files.exists(extractedFile));
     }
 
     private File createTestSkillsJar(String name) throws Exception {
