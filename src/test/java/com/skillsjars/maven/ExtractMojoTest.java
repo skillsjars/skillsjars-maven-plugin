@@ -90,6 +90,50 @@ public class ExtractMojoTest {
     }
 
     @Test
+    public void testExtractSkillsJarWithNewPath() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill-new", "META-INF/skills/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        Artifact artifact = new DefaultArtifact(
+            "com.skillsjars",
+            "test-skill-new",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        artifact.setFile(jarFile);
+        artifacts.add(artifact);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("SKILL.md should exist", Files.exists(extractedSkillMd));
+
+        Path extractedFile = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "test.txt");
+        assertTrue("Extracted file should exist", Files.exists(extractedFile));
+
+        String content = new String(Files.readAllBytes(extractedFile));
+        assertEquals("test content", content);
+
+        Path nestedFile = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "foo", "nested.txt");
+        assertTrue("Nested file should exist", Files.exists(nestedFile));
+
+        String nestedContent = new String(Files.readAllBytes(nestedFile));
+        assertEquals("nested content", nestedContent);
+    }
+
+    @Test
     public void testConflictingPathsThrowsError() throws Exception {
         File jarFile1 = createTestSkillsJar("skill1");
         File jarFile2 = createTestSkillsJar("skill2");
@@ -137,28 +181,32 @@ public class ExtractMojoTest {
     }
 
     private File createTestSkillsJar(String name) throws Exception {
+        return createTestSkillsJar(name, "META-INF/resources/skills/");
+    }
+
+    private File createTestSkillsJar(String name, String prefix) throws Exception {
         File jarFile = new File(testDir, name + ".jar");
-        
+
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile))) {
             // Add SKILL.md marker
-            JarEntry skillMd = new JarEntry("META-INF/resources/skills/org/repo/skill/SKILL.md");
+            JarEntry skillMd = new JarEntry(prefix + "org/repo/skill/SKILL.md");
             jos.putNextEntry(skillMd);
             jos.write("# Test Skill".getBytes());
             jos.closeEntry();
-            
+
             // Add file at root of skill
-            JarEntry entry = new JarEntry("META-INF/resources/skills/org/repo/skill/test.txt");
+            JarEntry entry = new JarEntry(prefix + "org/repo/skill/test.txt");
             jos.putNextEntry(entry);
             jos.write("test content".getBytes());
             jos.closeEntry();
-            
+
             // Add nested file
-            JarEntry nested = new JarEntry("META-INF/resources/skills/org/repo/skill/foo/nested.txt");
+            JarEntry nested = new JarEntry(prefix + "org/repo/skill/foo/nested.txt");
             jos.putNextEntry(nested);
             jos.write("nested content".getBytes());
             jos.closeEntry();
         }
-        
+
         return jarFile;
     }
 

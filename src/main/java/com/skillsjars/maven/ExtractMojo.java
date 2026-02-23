@@ -44,7 +44,10 @@ public class ExtractMojo extends AbstractMojo {
     }
 
     private static final String SKILLSJARS_GROUP = "com.skillsjars";
-    private static final String SKILLS_PREFIX = "META-INF/resources/skills/";
+    private static final String[] SKILLS_PREFIXES = {
+        "META-INF/skills/",
+        "META-INF/resources/skills/"
+    };
     private static final String OUTPUT_SUBDIR = "skillsjars";
 
     @Override
@@ -109,7 +112,16 @@ public class ExtractMojo extends AbstractMojo {
         return result;
     }
 
-    private void extractSkillsJar(Artifact artifact, Path outputPath, Map<String, String> extractedPaths) 
+    private static String matchSkillsPrefix(String entryName) {
+        for (String prefix : SKILLS_PREFIXES) {
+            if (entryName.startsWith(prefix)) {
+                return prefix;
+            }
+        }
+        return null;
+    }
+
+    private void extractSkillsJar(Artifact artifact, Path outputPath, Map<String, String> extractedPaths)
             throws IOException, MojoExecutionException {
         File jarFile = artifact.getFile();
         if (jarFile == null || !jarFile.exists()) {
@@ -126,9 +138,10 @@ public class ExtractMojo extends AbstractMojo {
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 String entryName = entry.getName();
-                
-                if (entryName.startsWith(SKILLS_PREFIX) && entryName.endsWith("/SKILL.md")) {
-                    String relativePath = entryName.substring(SKILLS_PREFIX.length());
+                String prefix = matchSkillsPrefix(entryName);
+
+                if (prefix != null && entryName.endsWith("/SKILL.md")) {
+                    String relativePath = entryName.substring(prefix.length());
                     String skillRoot = relativePath.substring(0, relativePath.length() - "/SKILL.md".length());
                     String flattenedRoot = skillRoot.replace("/", "__");
                     skillRoots.put(skillRoot + "/", flattenedRoot);
@@ -139,20 +152,21 @@ public class ExtractMojo extends AbstractMojo {
         // Second pass: extract files using the skill roots
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
-            
+
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 String entryName = entry.getName();
-                
-                if (!entryName.startsWith(SKILLS_PREFIX)) {
+                String prefix = matchSkillsPrefix(entryName);
+
+                if (prefix == null) {
                     continue;
                 }
-                
+
                 if (entry.isDirectory()) {
                     continue;
                 }
-                
-                String relativePath = entryName.substring(SKILLS_PREFIX.length());
+
+                String relativePath = entryName.substring(prefix.length());
                 
                 // Find the skill root for this file
                 String skillRoot = null;

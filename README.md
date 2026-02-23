@@ -12,8 +12,8 @@ Maven plugin to extract SkillsJars from dependencies to a directory for AI agent
         <plugins>
             <plugin>
                 <groupId>com.skillsjars</groupId>
-                <artifactId>skillsjars-maven-plugin</artifactId>
-                <version>0.0.1</version>
+                <artifactId>maven-plugin</artifactId>
+                <version>0.0.2</version>
             </plugin>
         </plugins>
     </build>
@@ -32,8 +32,8 @@ By default, the plugin extracts SkillsJars from all dependency scopes. You can c
 ```xml
 <plugin>
     <groupId>com.skillsjars</groupId>
-    <artifactId>skillsjars-maven-plugin</artifactId>
-    <version>0.0.1</version>
+    <artifactId>maven-plugin</artifactId>
+    <version>0.0.2</version>
     <configuration>
         <scopes>
             <scope>compile</scope>
