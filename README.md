@@ -5,8 +5,8 @@ Maven plugin to extract SkillsJars from dependencies to a directory for AI agent
 ## Usage
 
 1. Find Agent SkillsJars on [SkillsJars.com](https://skillsjars.com/)
-1. Add SkillsJars dependencies to your project
-1. Add the plugin:
+2. Add SkillsJars dependencies to your project
+3. Add the plugin:
     ```xml
     <build>
         <plugins>
@@ -18,7 +18,7 @@ Maven plugin to extract SkillsJars from dependencies to a directory for AI agent
         </plugins>
     </build>
     ```
-1. Extract SkillsJars to the directory your AI uses, like: 
+4. Extract SkillsJars to the directory your AI uses, like: 
     ```bash
     mvn skillsjars:extract -Ddir=.kiro/skills
     ```

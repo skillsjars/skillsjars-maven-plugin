@@ -8,6 +8,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Stream;
 
 @Mojo(name = "extract", requiresDependencyResolution = ResolutionScope.TEST)
 public class ExtractMojo extends AbstractMojo {
@@ -65,20 +67,19 @@ public class ExtractMojo extends AbstractMojo {
         }
 
         Set<String> allowedScopes = getAllowedScopes();
-        getLog().info("Extracting SkillsJars to: " + dir);
+        getLog().info(String.format("Extracting SkillsJars to: %s", dir));
         getLog().info("Using scopes: " + allowedScopes);
 
         Path outputPath = Paths.get(dir);
         
         try {
-            deleteDirectory(outputPath);
             Files.createDirectories(outputPath);
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to prepare output directory: " + outputPath, e);
+            throw new MojoExecutionException(String.format("Failed to prepare output directory: %s", outputPath), e);
         }
 
         Set<Artifact> skillsJars = findSkillsJars(allowedScopes);
-        getLog().info("Found " + skillsJars.size() + " SkillsJar(s)");
+        getLog().info(String.format("Found %d SkillsJar(s)", skillsJars.size()));
 
         Map<String, String> extractedPaths = new HashMap<>();
         
@@ -86,7 +87,7 @@ public class ExtractMojo extends AbstractMojo {
             try {
                 extractSkillsJar(artifact, outputPath, extractedPaths);
             } catch (IOException e) {
-                throw new MojoExecutionException("Failed to extract: " + artifact, e);
+                throw new MojoExecutionException(String.format("Failed to extract: %s", artifact), e);
             }
         }
 
@@ -149,13 +150,21 @@ public class ExtractMojo extends AbstractMojo {
             throws IOException, MojoExecutionException {
         File jarFile = artifact.getFile();
         if (jarFile == null || !jarFile.exists()) {
-            getLog().warn("Artifact file not found: " + artifact);
+            getLog().warn(String.format("Artifact file not found: %s", artifact));
             return;
         }
 
         getLog().info("Extracting: " + artifact);
 
         // First pass: find all SKILL.md files to identify skill roots
+        Map<String, String> skillRoots = identifySkillRoots(jarFile);
+
+        // Second pass: extract files using the skill roots
+        extractFiles(artifact, outputPath, extractedPaths, jarFile, skillRoots);
+    }
+
+    @NonNullDecl
+    private static Map<String, String> identifySkillRoots(File jarFile) throws IOException {
         Map<String, String> skillRoots = new HashMap<>();
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -172,10 +181,13 @@ public class ExtractMojo extends AbstractMojo {
                 }
             }
         }
+        return skillRoots;
+    }
 
-        // Second pass: extract files using the skill roots
+    private void extractFiles(Artifact artifact, Path outputPath, Map<String, String> extractedPaths, File jarFile, Map<String, String> skillRoots) throws IOException, MojoExecutionException {
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
+            Set<String> deletedSkillDirs = new HashSet<>();
 
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
@@ -210,14 +222,20 @@ public class ExtractMojo extends AbstractMojo {
                 
                 // Build target path: skillsjars__{flattenedRoot}/{remainder}
                 String remainder = relativePath.substring(skillRoot.length());
-                Path targetPath = outputPath.resolve("skillsjars__" + flattenedRoot).resolve(remainder);
-                
-                String conflictKey = "skillsjars__" + flattenedRoot + "/" + remainder;
+                String skillDirName = String.format("skillsjars__%s", flattenedRoot);
+                Path skillDir = outputPath.resolve(skillDirName);
+                Path targetPath = skillDir.resolve(remainder);
+
+                // Delete the skill directory before first extraction
+                if (!deletedSkillDirs.contains(skillDirName)) {
+                    deleteDirectory(skillDir);
+                    deletedSkillDirs.add(skillDirName);
+                }
+
+                String conflictKey = skillDirName + "/" + remainder;
                 if (extractedPaths.containsKey(conflictKey)) {
                     throw new MojoExecutionException(
-                        "Path conflict detected: " + conflictKey + 
-                        " exists in both " + extractedPaths.get(conflictKey) + 
-                        " and " + artifact
+                            String.format("Path conflict detected: %s exists in both %s and %s", conflictKey, extractedPaths.get(conflictKey), artifact)
                     );
                 }
                 
@@ -228,8 +246,8 @@ public class ExtractMojo extends AbstractMojo {
                 try (InputStream is = jar.getInputStream(entry)) {
                     Files.copy(is, targetPath);
                 }
-                
-                getLog().debug("Extracted: " + conflictKey);
+
+                getLog().debug(String.format("Extracted: %s", conflictKey));
             }
         }
     }
@@ -238,15 +256,16 @@ public class ExtractMojo extends AbstractMojo {
         if (!Files.exists(path)) {
             return;
         }
-        
-        Files.walk(path)
-            .sorted(Comparator.reverseOrder())
-            .forEach(p -> {
-                try {
-                    Files.delete(p);
-                } catch (IOException e) {
-                    getLog().warn("Failed to delete: " + p);
-                }
-            });
+
+        try (Stream<Path> pathStream = Files.walk(path)) {
+            pathStream.sorted(Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                        } catch (IOException e) {
+                            getLog().warn(String.format("Failed to delete: %s", p));
+                        }
+                    });
+        }
     }
 }
