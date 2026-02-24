@@ -5,6 +5,7 @@ import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
+import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,10 +15,12 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 
@@ -50,26 +53,7 @@ public class ExtractMojoTest {
         File jarFile = createTestSkillsJar("test-skill");
         File outputDir = new File(testDir, "output");
 
-        ExtractMojo mojo = new ExtractMojo();
-        mojo.setDir(outputDir.getAbsolutePath());
-        
-        MavenProject project = new MavenProject();
-        Set<Artifact> artifacts = new HashSet<>();
-        
-        Artifact artifact = new DefaultArtifact(
-            "com.skillsjars",
-            "test-skill",
-            "1.0.0",
-            Artifact.SCOPE_COMPILE,
-            "jar",
-            null,
-            new DefaultArtifactHandler("jar")
-        );
-        artifact.setFile(jarFile);
-        artifacts.add(artifact);
-        
-        project.setArtifacts(artifacts);
-        mojo.setProject(project);
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
 
         mojo.execute();
 
@@ -94,26 +78,7 @@ public class ExtractMojoTest {
         File jarFile = createTestSkillsJar("test-skill-new", "META-INF/skills/");
         File outputDir = new File(testDir, "output");
 
-        ExtractMojo mojo = new ExtractMojo();
-        mojo.setDir(outputDir.getAbsolutePath());
-
-        MavenProject project = new MavenProject();
-        Set<Artifact> artifacts = new HashSet<>();
-
-        Artifact artifact = new DefaultArtifact(
-            "com.skillsjars",
-            "test-skill-new",
-            "1.0.0",
-            Artifact.SCOPE_COMPILE,
-            "jar",
-            null,
-            new DefaultArtifactHandler("jar")
-        );
-        artifact.setFile(jarFile);
-        artifacts.add(artifact);
-
-        project.setArtifacts(artifacts);
-        mojo.setProject(project);
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill-new", jarFile);
 
         mojo.execute();
 
@@ -133,6 +98,31 @@ public class ExtractMojoTest {
         assertEquals("nested content", nestedContent);
     }
 
+    @NonNullDecl
+    private static ExtractMojo createExtractMojo(File outputDir, String artifactId, File jarFile) {
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        Artifact artifact = new DefaultArtifact(
+            "com.skillsjars",
+                artifactId,
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        artifact.setFile(jarFile);
+        artifacts.add(artifact);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+        return mojo;
+    }
+
     @Test
     public void testConflictingPathsThrowsError() throws Exception {
         File jarFile1 = createTestSkillsJar("skill1");
@@ -141,10 +131,10 @@ public class ExtractMojoTest {
 
         ExtractMojo mojo = new ExtractMojo();
         mojo.setDir(outputDir.getAbsolutePath());
-        
+
         MavenProject project = new MavenProject();
         Set<Artifact> artifacts = new HashSet<>();
-        
+
         Artifact artifact1 = new DefaultArtifact(
             "com.skillsjars",
             "skill1",
@@ -156,7 +146,7 @@ public class ExtractMojoTest {
         );
         artifact1.setFile(jarFile1);
         artifacts.add(artifact1);
-        
+
         Artifact artifact2 = new DefaultArtifact(
             "com.skillsjars",
             "skill2",
@@ -168,7 +158,7 @@ public class ExtractMojoTest {
         );
         artifact2.setFile(jarFile2);
         artifacts.add(artifact2);
-        
+
         project.setArtifacts(artifacts);
         mojo.setProject(project);
 
@@ -178,6 +168,40 @@ public class ExtractMojoTest {
         } catch (MojoExecutionException e) {
             assertTrue(e.getMessage().contains("conflict"));
         }
+    }
+
+    @Test
+    public void testOnlyDeletesIndividualSkillDirectory() throws Exception {
+        File outputDir = new File(testDir, "output");
+        assertTrue(outputDir.mkdirs());
+
+        // Create a pre-existing file in the output directory
+        File preExisting = new File(outputDir, "existing-file.txt");
+        Files.write(preExisting.toPath(), "should not be deleted".getBytes());
+
+        // Create a pre-existing skill directory that should be deleted
+        File preExistingSkillDir = new File(outputDir, "skillsjars__org__repo__skill");
+        assertTrue(preExistingSkillDir.mkdirs());
+        File oldSkillFile = new File(preExistingSkillDir, "old-file.txt");
+        Files.write(oldSkillFile.toPath(), "should be deleted".getBytes());
+
+        // Now extract a skill
+        File jarFile = createTestSkillsJar("test-skill");
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+
+        mojo.execute();
+
+        // Pre-existing file should still exist
+        assertTrue("Pre-existing file should not be deleted", preExisting.exists());
+        String content = new String(Files.readAllBytes(preExisting.toPath()));
+        assertEquals("should not be deleted", content);
+
+        // Old skill file should be deleted
+        assertFalse("Old skill file should be deleted", oldSkillFile.exists());
+
+        // New skill files should exist
+        Path extractedFile = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "test.txt");
+        assertTrue("New skill file should exist", Files.exists(extractedFile));
     }
 
     private File createTestSkillsJar(String name) throws Exception {
@@ -215,14 +239,16 @@ public class ExtractMojoTest {
             return;
         }
         
-        Files.walk(path)
-            .sorted((a, b) -> b.compareTo(a))
-            .forEach(p -> {
-                try {
-                    Files.delete(p);
-                } catch (Exception e) {
-                    // ignore
-                }
-            });
+        try (Stream<Path> pathStream = Files.walk(path)) {
+            pathStream
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                        } catch (Exception e) {
+                            // ignore
+                        }
+                    });
+        }
     }
 }
