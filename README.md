@@ -14,7 +14,7 @@ Extract SkillsJars from dependencies to a directory for AI agents.
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.4</version>
+                <version>0.0.5</version>
                 <dependencies>
                     <!-- Your SkillsJars -->
                     <dependency>
@@ -45,7 +45,7 @@ Create SkillsJars from your project's skills directory.
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.4</version>
+                <version>0.0.5</version>
                 <executions>
                     <execution>
                         <goals>
@@ -69,7 +69,7 @@ You can customize the skills directory location:
 <plugin>
     <groupId>com.skillsjars</groupId>
     <artifactId>maven-plugin</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
     <executions>
         <execution>
             <goals>

@@ -15,7 +15,7 @@
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.4</version>
+                <version>0.0.5</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.skillsjars</groupId>
@@ -26,6 +26,11 @@
                         <groupId>com.skillsjars</groupId>
                         <artifactId>sivaprasadreddy__sivalabs-agent-skills__spring-boot</artifactId>
                         <version>2026_02_23-dba3310</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.jamesward</groupId>
+                        <artifactId>skills</artifactId>
+                        <version>0.0.1</version>
                     </dependency>
                 </dependencies>
             </plugin>

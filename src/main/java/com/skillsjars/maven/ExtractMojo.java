@@ -46,12 +46,10 @@ public class ExtractMojo extends AbstractMojo {
         this.mojoExecution = mojoExecution;
     }
 
-    private static final String SKILLSJARS_GROUP = "com.skillsjars";
     private static final String[] SKILLS_PREFIXES = {
         "META-INF/skills/",
         "META-INF/resources/skills/"
     };
-    private static final String OUTPUT_SUBDIR = "skillsjars";
 
     @Override
     public void execute() throws MojoExecutionException {
@@ -69,19 +67,21 @@ public class ExtractMojo extends AbstractMojo {
             throw new MojoExecutionException(String.format("Failed to prepare output directory: %s", outputPath), e);
         }
 
-        Set<Artifact> skillsJars = findSkillsJars();
-        getLog().info(String.format("Found %d SkillsJar(s)", skillsJars.size()));
-
+        Set<Artifact> candidates = findSkillsJars();
         Map<String, String> extractedPaths = new HashMap<>();
-        
-        for (Artifact artifact : skillsJars) {
+        int extractedCount = 0;
+
+        for (Artifact artifact : candidates) {
             try {
-                extractSkillsJar(artifact, outputPath, extractedPaths);
+                if (extractSkillsJar(artifact, outputPath, extractedPaths)) {
+                    extractedCount++;
+                }
             } catch (IOException e) {
                 throw new MojoExecutionException(String.format("Failed to extract: %s", artifact), e);
             }
         }
 
+        getLog().info(String.format("Found %d SkillsJar(s)", extractedCount));
         getLog().info("Successfully extracted SkillsJars");
     }
 
@@ -89,9 +89,10 @@ public class ExtractMojo extends AbstractMojo {
         Set<Artifact> result = new HashSet<>();
 
         // Collect from project dependencies
+        // todo: do we need to support project artifacts?
         Set<Artifact> projectArtifacts = project.getArtifacts();
         for (Artifact artifact : projectArtifacts) {
-            if (SKILLSJARS_GROUP.equals(artifact.getGroupId())) {
+            if (isSkillsJarCandidate(artifact)) {
                 result.add(artifact);
             }
         }
@@ -103,7 +104,7 @@ public class ExtractMojo extends AbstractMojo {
                 var pluginDescriptor = mojoDescriptor.getPluginDescriptor();
                 if (pluginDescriptor != null && pluginDescriptor.getArtifacts() != null) {
                     for (Artifact artifact : pluginDescriptor.getArtifacts()) {
-                        if (SKILLSJARS_GROUP.equals(artifact.getGroupId())) {
+                        if (isSkillsJarCandidate(artifact)) {
                             result.add(artifact);
                         }
                     }
@@ -112,6 +113,15 @@ public class ExtractMojo extends AbstractMojo {
         }
 
         return result;
+    }
+
+    private boolean isSkillsJarCandidate(Artifact artifact) {
+        // Skip maven-plugin artifacts
+        if ("maven-plugin".equals(artifact.getType())) {
+            return false;
+        }
+        // Accept jar artifacts from any groupId
+        return "jar".equals(artifact.getType());
     }
 
     private static String matchSkillsPrefix(String entryName) {
@@ -123,21 +133,27 @@ public class ExtractMojo extends AbstractMojo {
         return null;
     }
 
-    private void extractSkillsJar(Artifact artifact, Path outputPath, Map<String, String> extractedPaths)
+    private boolean extractSkillsJar(Artifact artifact, Path outputPath, Map<String, String> extractedPaths)
             throws IOException, MojoExecutionException {
         File jarFile = artifact.getFile();
         if (jarFile == null || !jarFile.exists()) {
             getLog().warn(String.format("Artifact file not found: %s", artifact));
-            return;
+            return false;
         }
-
-        getLog().info("Extracting: " + artifact);
 
         // First pass: find all SKILL.md files to identify skill roots
         Map<String, String> skillRoots = identifySkillRoots(jarFile);
 
+        // Skip if no skills found
+        if (skillRoots.isEmpty()) {
+            return false;
+        }
+
+        getLog().info("Extracting: " + artifact);
+
         // Second pass: extract files using the skill roots
         extractFiles(artifact, outputPath, extractedPaths, jarFile, skillRoots);
+        return true;
     }
 
     @NonNullDecl
@@ -180,7 +196,7 @@ public class ExtractMojo extends AbstractMojo {
                 }
 
                 String relativePath = entryName.substring(prefix.length());
-                
+
                 // Find the skill root for this file
                 String skillRoot = null;
                 String flattenedRoot = null;
@@ -191,12 +207,12 @@ public class ExtractMojo extends AbstractMojo {
                         break;
                     }
                 }
-                
+
                 if (skillRoot == null) {
                     getLog().warn("Skipping file not under a SKILL.md root: " + relativePath);
                     continue;
                 }
-                
+
                 // Build target path: skillsjars__{flattenedRoot}/{remainder}
                 String remainder = relativePath.substring(skillRoot.length());
                 String skillDirName = String.format("skillsjars__%s", flattenedRoot);
@@ -215,11 +231,11 @@ public class ExtractMojo extends AbstractMojo {
                             String.format("Path conflict detected: %s exists in both %s and %s", conflictKey, extractedPaths.get(conflictKey), artifact)
                     );
                 }
-                
+
                 extractedPaths.put(conflictKey, artifact.toString());
-                
+
                 Files.createDirectories(targetPath.getParent());
-                
+
                 try (InputStream is = jar.getInputStream(entry)) {
                     Files.copy(is, targetPath);
                 }

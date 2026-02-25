@@ -18,6 +18,8 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -79,7 +81,7 @@ public class ExtractMojoTest {
 
     @Test
     public void testExtractSkillsJarWithNewPath() throws Exception {
-        File jarFile = createTestSkillsJar("test-skill-new", "META-INF/skills/");
+        File jarFile = createTestSkillsJar("test-skill-new", "META-INF/skills/org/repo/skill/");
         File outputDir = new File(testDir, "output");
 
         ExtractMojo mojo = createExtractMojo(outputDir, "test-skill-new", jarFile);
@@ -176,7 +178,7 @@ public class ExtractMojoTest {
 
     @Test
     public void testExtractSkillsJarFromPluginDependencies() throws Exception {
-        File jarFile = createTestSkillsJar("plugin-skill", "META-INF/skills/");
+        File jarFile = createTestSkillsJar("plugin-skill", "META-INF/skills/org/repo/skill/");
         File outputDir = new File(testDir, "output");
 
         Artifact pluginArtifact = new DefaultArtifact(
@@ -249,28 +251,239 @@ public class ExtractMojoTest {
         assertTrue("New skill file should exist", Files.exists(extractedFile));
     }
 
-    private File createTestSkillsJar(String name) throws Exception {
-        return createTestSkillsJar(name, "META-INF/resources/skills/");
+    @Test
+    public void testDoesNotExtractMavenPluginArtifacts() throws Exception {
+        File skillsJar = createTestSkillsJar("test-skill");
+        File pluginJar = createTestSkillsJar("maven-plugin");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        // Add a regular jar artifact
+        Artifact skillArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "test-skill",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        skillArtifact.setFile(skillsJar);
+        artifacts.add(skillArtifact);
+
+        // Add a maven-plugin artifact
+        Artifact pluginArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "maven-plugin",
+            "0.0.4",
+            Artifact.SCOPE_COMPILE,
+            "maven-plugin",
+            null,
+            new DefaultArtifactHandler("maven-plugin")
+        );
+        pluginArtifact.setFile(pluginJar);
+        artifacts.add(pluginArtifact);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        // Should extract the regular jar
+        Path extractedSkill = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("Regular jar should be extracted", Files.exists(extractedSkill));
     }
 
-    private File createTestSkillsJar(String name, String prefix) throws Exception {
+    @Test
+    public void testExtractsFromAllGroupIds() throws Exception {
+        File skillsJar1 = createTestSkillsJar("test-skill-1");
+        File skillsJar2 = createTestSkillsJar("test-skill-2", "META-INF/skills/jamesward/skills/zen/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        Artifact artifact1 = new DefaultArtifact(
+            "com.skillsjars",
+            "test-skill-1",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        artifact1.setFile(skillsJar1);
+        artifacts.add(artifact1);
+
+        Artifact artifact2 = new DefaultArtifact(
+            "com.jamesward",
+            "test-skill-2",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        artifact2.setFile(skillsJar2);
+        artifacts.add(artifact2);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        // Should extract both
+        Path extracted1 = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("com.skillsjars artifact should be extracted", Files.exists(extracted1));
+
+        Path extracted2 = Paths.get(outputDir.getAbsolutePath(), "skillsjars__jamesward__skills__zen", "SKILL.md");
+        assertTrue("com.jamesward artifact should be extracted", Files.exists(extracted2));
+    }
+
+    @Test
+    public void testExtractsFromAllScopes() throws Exception {
+        File compileJar = createTestSkillsJar("compile-skill");
+        File runtimeJar = createTestSkillsJar("runtime-skill", "META-INF/skills/runtime/repo/skill/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        // Compile scope dependency
+        Artifact compileArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "compile-skill",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        compileArtifact.setFile(compileJar);
+        artifacts.add(compileArtifact);
+
+        // Runtime scope dependency
+        Artifact runtimeArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "runtime-skill",
+            "1.0.0",
+            Artifact.SCOPE_RUNTIME,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        runtimeArtifact.setFile(runtimeJar);
+        artifacts.add(runtimeArtifact);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        // Should extract both
+        Path compileExtracted = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("Compile scope dependency should be extracted", Files.exists(compileExtracted));
+
+        Path runtimeExtracted = Paths.get(outputDir.getAbsolutePath(), "skillsjars__runtime__repo__skill", "SKILL.md");
+        assertTrue("Runtime scope dependency should be extracted", Files.exists(runtimeExtracted));
+    }
+
+    @Test
+    public void testExtractsTransitiveDependencies() throws Exception {
+        File directJar = createTestSkillsJar("direct-skill");
+        File transitiveJar = createTestSkillsJar("transitive-skill", "META-INF/skills/transitive/repo/skill/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+
+        MavenProject project = new MavenProject();
+        
+        // Create direct dependency
+        Artifact directArtifact = new DefaultArtifact(
+            "com.example",
+            "direct-skill",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        directArtifact.setFile(directJar);
+        
+        // Create transitive dependency
+        Artifact transitiveArtifact = new DefaultArtifact(
+            "com.skillsjars",
+            "transitive-skill",
+            "1.0.0",
+            Artifact.SCOPE_COMPILE,
+            "jar",
+            null,
+            new DefaultArtifactHandler("jar")
+        );
+        transitiveArtifact.setFile(transitiveJar);
+        
+        // Set up dependency trail to show transitive relationship
+        List<String> dependencyTrail = new ArrayList<>();
+        dependencyTrail.add("com.example:test-project:jar:1.0.0");
+        dependencyTrail.add("com.example:direct-skill:jar:1.0.0");
+        dependencyTrail.add("com.skillsjars:transitive-skill:jar:1.0.0");
+        transitiveArtifact.setDependencyTrail(dependencyTrail);
+        
+        // project.getArtifacts() includes both direct and transitive
+        Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(directArtifact);
+        artifacts.add(transitiveArtifact);
+        
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        // Should extract both direct and transitive
+        Path directExtracted = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("Direct dependency should be extracted", Files.exists(directExtracted));
+
+        Path transitiveExtracted = Paths.get(outputDir.getAbsolutePath(), "skillsjars__transitive__repo__skill", "SKILL.md");
+        assertTrue("Transitive dependency should be extracted", Files.exists(transitiveExtracted));
+    }
+
+    private File createTestSkillsJar(String name) throws Exception {
+        return createTestSkillsJar(name, "META-INF/resources/skills/org/repo/skill/");
+    }
+
+    private File createTestSkillsJar(String name, String skillPath) throws Exception {
         File jarFile = new File(testDir, name + ".jar");
 
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile))) {
+            // Ensure path ends with /
+            String path = skillPath.endsWith("/") ? skillPath : skillPath + "/";
+            
             // Add SKILL.md marker
-            JarEntry skillMd = new JarEntry(prefix + "org/repo/skill/SKILL.md");
+            JarEntry skillMd = new JarEntry(path + "SKILL.md");
             jos.putNextEntry(skillMd);
             jos.write("# Test Skill".getBytes());
             jos.closeEntry();
 
             // Add file at root of skill
-            JarEntry entry = new JarEntry(prefix + "org/repo/skill/test.txt");
+            JarEntry entry = new JarEntry(path + "test.txt");
             jos.putNextEntry(entry);
             jos.write("test content".getBytes());
             jos.closeEntry();
 
             // Add nested file
-            JarEntry nested = new JarEntry(prefix + "org/repo/skill/foo/nested.txt");
+            JarEntry nested = new JarEntry(path + "foo/nested.txt");
             jos.putNextEntry(nested);
             jos.write("nested content".getBytes());
             jos.closeEntry();
