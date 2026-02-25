@@ -27,9 +27,6 @@ public class ExtractMojo extends AbstractMojo {
     @Parameter(property = "dir")
     private String dir;
 
-    @Parameter
-    private List<String> scopes;
-
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
 
@@ -39,10 +36,6 @@ public class ExtractMojo extends AbstractMojo {
     // Package-private setters for testing
     void setDir(String dir) {
         this.dir = dir;
-    }
-
-    void setScopes(List<String> scopes) {
-        this.scopes = scopes;
     }
 
     void setProject(MavenProject project) {
@@ -66,19 +59,17 @@ public class ExtractMojo extends AbstractMojo {
             throw new MojoExecutionException("The 'dir' parameter is required. Use -Ddir=<path>");
         }
 
-        Set<String> allowedScopes = getAllowedScopes();
         getLog().info(String.format("Extracting SkillsJars to: %s", dir));
-        getLog().info("Using scopes: " + allowedScopes);
 
         Path outputPath = Paths.get(dir);
-        
+
         try {
             Files.createDirectories(outputPath);
         } catch (IOException e) {
             throw new MojoExecutionException(String.format("Failed to prepare output directory: %s", outputPath), e);
         }
 
-        Set<Artifact> skillsJars = findSkillsJars(allowedScopes);
+        Set<Artifact> skillsJars = findSkillsJars();
         getLog().info(String.format("Found %d SkillsJar(s)", skillsJars.size()));
 
         Map<String, String> extractedPaths = new HashMap<>();
@@ -94,27 +85,13 @@ public class ExtractMojo extends AbstractMojo {
         getLog().info("Successfully extracted SkillsJars");
     }
 
-    private Set<String> getAllowedScopes() {
-        if (scopes == null || scopes.isEmpty()) {
-            return new HashSet<>(Arrays.asList(
-                Artifact.SCOPE_COMPILE,
-                Artifact.SCOPE_PROVIDED,
-                Artifact.SCOPE_RUNTIME,
-                Artifact.SCOPE_TEST,
-                Artifact.SCOPE_SYSTEM
-            ));
-        }
-        return new HashSet<>(scopes);
-    }
-
-    private Set<Artifact> findSkillsJars(Set<String> allowedScopes) {
+    private Set<Artifact> findSkillsJars() {
         Set<Artifact> result = new HashSet<>();
 
-        // Collect from project dependencies (compile, provided, runtime, test, system)
+        // Collect from project dependencies
         Set<Artifact> projectArtifacts = project.getArtifacts();
         for (Artifact artifact : projectArtifacts) {
-            if (SKILLSJARS_GROUP.equals(artifact.getGroupId()) &&
-                allowedScopes.contains(artifact.getScope())) {
+            if (SKILLSJARS_GROUP.equals(artifact.getGroupId())) {
                 result.add(artifact);
             }
         }

@@ -10,25 +10,24 @@
 
     <name>SkillsJars Example Code Assistant</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.skillsjars</groupId>
-            <artifactId>anthropics__skills__pdf</artifactId>
-            <version>2026_02_06-1ed29a0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.skillsjars</groupId>
-            <artifactId>sivaprasadreddy__sivalabs-agent-skills__spring-boot</artifactId>
-            <version>2026_02_23-dba3310</version>
-        </dependency>
-    </dependencies>
-
     <build>
         <plugins>
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.2</version>
+                <version>0.0.3</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.skillsjars</groupId>
+                        <artifactId>anthropics__skills__pdf</artifactId>
+                        <version>2026_02_06-1ed29a0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.skillsjars</groupId>
+                        <artifactId>sivaprasadreddy__sivalabs-agent-skills__spring-boot</artifactId>
+                        <version>2026_02_23-dba3310</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>

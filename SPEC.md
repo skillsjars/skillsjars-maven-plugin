@@ -2,7 +2,23 @@
 
 SkillsJars are AI Agent Skills on Maven Central (https://www.skillsjars.com/)
 
-Users can add these skills to their Maven build config (`pom.xml`) like:
+Users can add skills as plugin dependencies in their Maven build config (`pom.xml`) like:
+```
+<plugin>
+    <groupId>com.skillsjars</groupId>
+    <artifactId>maven-plugin</artifactId>
+    <version>0.0.3</version>
+    <dependencies>
+        <dependency>
+            <groupId>com.skillsjars</groupId>
+            <artifactId>anthropics__skills__pdf</artifactId>
+            <version>2026_02_06-1ed29a0</version>
+        </dependency>
+    </dependencies>
+</plugin>
+```
+
+SkillsJars can also be added as project-level dependencies:
 ```
 <dependency>
     <groupId>com.skillsjars</groupId>
@@ -11,26 +27,18 @@ Users can add these skills to their Maven build config (`pom.xml`) like:
 </dependency>
 ```
 
-We need a Maven Plugin that enables users to extract the SkillsJars contents to a directory where AI agents can pick them up. For example, the Kiro CLI AI agent picks up skills from the `.kiro/skills` directory.
+The plugin extracts SkillsJars contents to a directory where AI agents can pick them up. For example, the Kiro CLI AI agent picks up skills from the `.kiro/skills` directory.
 
-There should be a Maven task `skillsjars:extract` which does the extraction.
+There is a Maven task `skillsjars:extract` which does the extraction. The `skillsjars:extract` task is standalone only and is not bound to a Maven lifecycle phase.
 
-Users should be able to specify the directory to extract to, ideally as a parameter when they run the extract task.
+The parameter for the extract directory is `dir` so users run something like `mvn skillsjars:extract -Ddir=.kiro/skills`. If the user doesn't provide a directory, the plugin fails with an error.
 
-If the user doesn't provide a directory, fail with an error.
+The plugin collects all `com.skillsjars` group dependencies from both project dependencies and plugin dependencies. SkillsJars can have transitive dependencies so the plugin looks in the classpath for all dependencies in the `com.skillsjars` group.
 
-SkillsJars can have transitive dependencies so the extract task will need to look in the classpath for all dependencies in the `com.skillsjars` group.
+The structure inside SkillsJars is a path like `META-INF/skills/ORG/REPO/SKILL` or `META-INF/resources/skills/ORG/REPO/SKILL`. Only files under a directory containing a `SKILL.md` marker are extracted. The extracted output drops the `META-INF/skills` (or `META-INF/resources/skills`) prefix and flattens the skill root path with `__` separators under a `skillsjars__` prefix in the user-specified directory. For example, `META-INF/skills/org/repo/skill/test.txt` extracts to `<dir>/skillsjars__org__repo__skill/test.txt`.
 
-By default, the plugin will extract dependencies from all Maven dependency scopes but this should be configurable in the plugin settings under a `<scopes>` array parameter like `<scopes><scope>compile</scope><scope>test</scope></scopes>`.
+On extraction, each individual skill directory is deleted and re-extracted. Other files in the output directory are preserved.
 
-The structure inside the SkillsJars is a path like `META-INF/resources/skills/ORG/REPO/SKILL` and the extracted contents should drop the `META-INF/resources/skills` prefix but add a subdir of `skillsjars` inside the user specified dir.  Everything in the `META-INF/resources/skills` directory should be extracted.
+Maven does not allow multiple versions of the same jar on the classpath.
 
-Maven does not allow mutliple versions of the same jar on the classpath.
-
-The `skillsjars:extract` task should be standalone only. Do not bind it to a Maven lifecycle phase.
-
-The extraction should match the contents of the SkillsJars so the easiest approach might be to delete the `user-specified/skillsjars` dir and re-extract everything when the user runs the task.
-
-On extract, if two SkillsJars have overlapping paths, then an error should be thrown.
-
-The parameter for the extract directory should be `dir` so users will run something like `mvn skillsjars:extract -Ddir=.kiro/skills`
+On extract, if two SkillsJars have overlapping paths, then an error is thrown.
