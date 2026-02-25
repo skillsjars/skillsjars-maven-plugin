@@ -10,7 +10,7 @@
 
     <groupId>com.skillsjars</groupId>
     <artifactId>maven-plugin</artifactId>
-    <version>0.0.4-SNAPSHOT</version>
+    <version>0.0.4</version>
     <packaging>maven-plugin</packaging>
 
     <name>SkillsJars Maven Plugin</name>
@@ -35,7 +35,7 @@
         <connection>scm:git:https://github.com/skillsjars/skillsjars-maven-plugin.git</connection>
         <developerConnection>scm:git:https://github.com/skillsjars/skillsjars-maven-plugin.git</developerConnection>
         <url>https://github.com/skillsjars/skillsjars-maven-plugin</url>
-      <tag>HEAD</tag>
+      <tag>maven-plugin-0.0.4</tag>
   </scm>
 
     <properties>
