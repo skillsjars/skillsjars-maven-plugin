@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Mojo(name = "package", defaultPhase = LifecyclePhase.GENERATE_RESOURCES)
@@ -30,6 +33,8 @@ public class PackageMojo extends AbstractMojo {
     void setProject(MavenProject project) {
         this.project = project;
     }
+
+    static final String PROPERTY_PREFIX = "skillsjars.skill.";
 
     @Override
     public void execute() throws MojoExecutionException {
@@ -57,6 +62,8 @@ public class PackageMojo extends AbstractMojo {
                     continue;
                 }
 
+                validateAllowedToolsProperty(skillMarker);
+
                 String skillPath = parseSkillPath(skillDir.getName());
                 copySkill(skillDir, outputDir, skillPath);
             }
@@ -65,6 +72,52 @@ public class PackageMojo extends AbstractMojo {
         }
 
         getLog().info("Skills packaged to: " + outputDir);
+    }
+
+    void validateAllowedToolsProperty(File skillMdFile) throws MojoExecutionException {
+        try {
+            String content = new String(Files.readAllBytes(skillMdFile.toPath()));
+            String frontmatter = extractFrontmatter(content);
+            if (frontmatter == null) return;
+
+            String skillName = extractFrontmatterValue(frontmatter, "name");
+            String allowedTools = extractFrontmatterValue(frontmatter, "allowed-tools");
+            if (allowedTools == null || skillName == null) return;
+
+            String propertyName = PROPERTY_PREFIX + skillName + ".allowed-tools";
+            Properties props = project.getProperties();
+            String pomValue = props.getProperty(propertyName);
+
+            if (pomValue == null) {
+                throw new MojoExecutionException("SKILL.md for '" + skillName + "' has allowed-tools but POM is missing property '" + propertyName + "'. " +
+                        "Add <" + propertyName + ">" + allowedTools + "</" + propertyName + "> to <properties> in your pom.xml.");
+            } else if (!pomValue.equals(allowedTools)) {
+                throw new MojoExecutionException("Property '" + propertyName + "' value '" + pomValue +
+                        "' does not match SKILL.md allowed-tools '" + allowedTools + "'");
+            }
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to read SKILL.md: " + skillMdFile, e);
+        }
+    }
+
+    static String extractFrontmatter(String content) {
+        String[] lines = content.split("\n", -1);
+        if (lines.length == 0 || !lines[0].trim().equals("---")) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].trim().equals("---")) return sb.toString();
+            sb.append(lines[i]).append("\n");
+        }
+        return null;
+    }
+
+    static String extractFrontmatterValue(String frontmatter, String key) {
+        Pattern pattern = Pattern.compile("^" + Pattern.quote(key) + ":\\s*(.+)$", Pattern.MULTILINE);
+        Matcher matcher = pattern.matcher(frontmatter);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
     }
 
     private String parseSkillPath(String skillName) {

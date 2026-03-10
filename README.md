@@ -14,7 +14,7 @@ Extract SkillsJars from dependencies to a directory for AI agents.
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.5</version>
+                <version>0.0.6</version>
                 <dependencies>
                     <!-- Your SkillsJars -->
                     <dependency>
@@ -45,7 +45,7 @@ Create SkillsJars from your project's skills directory.
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.5</version>
+                <version>0.0.6</version>
                 <executions>
                     <execution>
                         <goals>
@@ -64,12 +64,24 @@ Create SkillsJars from your project's skills directory.
 
 The plugin packages skills into `META-INF/skills/org/repo/skill` following SkillsJar conventions. If your project has GitHub SCM configured, it uses the org/repo from the URL. Otherwise, it uses the project's groupId.
 
+### allowed-tools validation
+
+If a `SKILL.md` frontmatter includes `allowed-tools` (a space-delimited list of pre-approved tools), the plugin validates that the POM contains a matching property:
+
+```xml
+<properties>
+    <skillsjars.skill.my-skill.allowed-tools>Bash Read Edit</skillsjars.skill.my-skill.allowed-tools>
+</properties>
+```
+
+The property name follows the pattern `skillsjars.skill.<skill-name>.allowed-tools`, which supports multiple skills in a single JAR. If the SKILL.md has `allowed-tools` but the POM property is missing or the value doesn't match, the build fails.
+
 You can customize the skills directory location:
 ```xml
 <plugin>
     <groupId>com.skillsjars</groupId>
     <artifactId>maven-plugin</artifactId>
-    <version>0.0.5</version>
+    <version>0.0.6</version>
     <executions>
         <execution>
             <goals>

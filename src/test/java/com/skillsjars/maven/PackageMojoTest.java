@@ -174,6 +174,108 @@ public class PackageMojoTest {
                     new File(outputDir, "META-INF/skills/com/example/test/invalid").exists());
     }
 
+    @Test
+    public void testExtractFrontmatter() {
+        String content = "---\nname: my-skill\ndescription: A skill\nallowed-tools: Bash Read\n---\n# Content";
+        String fm = PackageMojo.extractFrontmatter(content);
+        assertNotNull(fm);
+        assertEquals("my-skill", PackageMojo.extractFrontmatterValue(fm, "name"));
+        assertEquals("Bash Read", PackageMojo.extractFrontmatterValue(fm, "allowed-tools"));
+        assertNull(PackageMojo.extractFrontmatterValue(fm, "license"));
+    }
+
+    @Test
+    public void testExtractFrontmatterNoFrontmatter() {
+        assertNull(PackageMojo.extractFrontmatter("# Just content"));
+    }
+
+    @Test
+    public void testValidateAllowedToolsMatchingProperty() throws Exception {
+        File skillsDir = new File(testDir, "skills");
+        File skillDir = new File(skillsDir, "test-skill");
+        assertTrue(skillDir.mkdirs());
+
+        String skillContent = "---\nname: test-skill\ndescription: A skill\nallowed-tools: Bash Read Edit\n---\n# Skill";
+        Files.write(new File(skillDir, "SKILL.md").toPath(), skillContent.getBytes());
+
+        PackageMojo mojo = new PackageMojo();
+        mojo.setSkillsDir(skillsDir);
+
+        MavenProject project = createTestProject();
+        project.getProperties().setProperty("skillsjars.skill.test-skill.allowed-tools", "Bash Read Edit");
+        mojo.setProject(project);
+
+        // Should not throw
+        mojo.execute();
+    }
+
+    @Test
+    public void testValidateAllowedToolsMismatchThrows() throws Exception {
+        File skillsDir = new File(testDir, "skills");
+        File skillDir = new File(skillsDir, "test-skill");
+        assertTrue(skillDir.mkdirs());
+
+        String skillContent = "---\nname: test-skill\ndescription: A skill\nallowed-tools: Bash Read Edit\n---\n# Skill";
+        Files.write(new File(skillDir, "SKILL.md").toPath(), skillContent.getBytes());
+
+        PackageMojo mojo = new PackageMojo();
+        mojo.setSkillsDir(skillsDir);
+
+        MavenProject project = createTestProject();
+        project.getProperties().setProperty("skillsjars.skill.test-skill.allowed-tools", "Bash");
+        mojo.setProject(project);
+
+        try {
+            mojo.execute();
+            fail("Expected MojoExecutionException for mismatched allowed-tools");
+        } catch (MojoExecutionException e) {
+            assertTrue(e.getMessage().contains("does not match"));
+        }
+    }
+
+    @Test
+    public void testValidateAllowedToolsMissingPropertyFails() throws Exception {
+        File skillsDir = new File(testDir, "skills");
+        File skillDir = new File(skillsDir, "test-skill");
+        assertTrue(skillDir.mkdirs());
+
+        String skillContent = "---\nname: test-skill\ndescription: A skill\nallowed-tools: Bash Read Edit\n---\n# Skill";
+        Files.write(new File(skillDir, "SKILL.md").toPath(), skillContent.getBytes());
+
+        PackageMojo mojo = new PackageMojo();
+        mojo.setSkillsDir(skillsDir);
+
+        MavenProject project = createTestProject();
+        // No property set - should fail
+        mojo.setProject(project);
+
+        try {
+            mojo.execute();
+            fail("Expected MojoExecutionException for missing allowed-tools property");
+        } catch (MojoExecutionException e) {
+            assertTrue(e.getMessage().contains("missing property"));
+        }
+    }
+
+    @Test
+    public void testNoAllowedToolsNoValidation() throws Exception {
+        File skillsDir = new File(testDir, "skills");
+        File skillDir = new File(skillsDir, "test-skill");
+        assertTrue(skillDir.mkdirs());
+
+        String skillContent = "---\nname: test-skill\ndescription: A skill\n---\n# Skill";
+        Files.write(new File(skillDir, "SKILL.md").toPath(), skillContent.getBytes());
+
+        PackageMojo mojo = new PackageMojo();
+        mojo.setSkillsDir(skillsDir);
+
+        MavenProject project = createTestProject();
+        mojo.setProject(project);
+
+        // Should not throw - no allowed-tools means nothing to validate
+        mojo.execute();
+    }
+
     private MavenProject createTestProject() {
         MavenProject project = new MavenProject();
         project.setGroupId("com.example.test");
