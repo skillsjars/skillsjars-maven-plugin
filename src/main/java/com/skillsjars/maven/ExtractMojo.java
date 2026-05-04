@@ -25,6 +25,9 @@ public class ExtractMojo extends AbstractMojo {
     @Parameter(property = "dir")
     private String dir;
 
+    @Parameter(property = "useSkillsNameAsDirectory", defaultValue = "false")
+    private Boolean useSkillsNameAsDirectory;
+
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
 
@@ -34,6 +37,10 @@ public class ExtractMojo extends AbstractMojo {
     // Package-private setters for testing
     void setDir(String dir) {
         this.dir = dir;
+    }
+
+    void setUseSkillsNameAsDirectory(Boolean useSkillsNameAsDirectory) {
+        this.useSkillsNameAsDirectory = useSkillsNameAsDirectory;
     }
 
     void setProject(MavenProject project) {
@@ -140,7 +147,7 @@ public class ExtractMojo extends AbstractMojo {
         }
 
         // First pass: find all SKILL.md files to identify skill roots
-        Map<String, String> skillRoots = identifySkillRoots(jarFile);
+        Map<String, String> skillRoots = identifySkillRoots(jarFile, useSkillsNameAsDirectory);
 
         // Skip if no skills found
         if (skillRoots.isEmpty()) {
@@ -154,7 +161,7 @@ public class ExtractMojo extends AbstractMojo {
         return true;
     }
 
-    private static Map<String, String> identifySkillRoots(File jarFile) throws IOException {
+    private static Map<String, String> identifySkillRoots(File jarFile, Boolean useSkillsNameAsDirectory) throws IOException {
         Map<String, String> skillRoots = new HashMap<>();
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -166,8 +173,13 @@ public class ExtractMojo extends AbstractMojo {
                 if (prefix != null && entryName.endsWith("/SKILL.md")) {
                     String relativePath = entryName.substring(prefix.length());
                     String skillRoot = relativePath.substring(0, relativePath.length() - "/SKILL.md".length());
-                    String flattenedRoot = skillRoot.replace("/", "__");
-                    skillRoots.put(skillRoot + "/", flattenedRoot);
+                    String skillsDirName;
+                    if (Boolean.TRUE.equals(useSkillsNameAsDirectory)) {
+                        skillsDirName = skillRoot.substring(skillRoot.lastIndexOf("/") + 1);
+                    } else {
+                        skillsDirName = String.format("skillsjars__%s", skillRoot.replace("/", "__"));
+                    }
+                    skillRoots.put(skillRoot + "/", skillsDirName);
                 }
             }
         }
@@ -196,11 +208,11 @@ public class ExtractMojo extends AbstractMojo {
 
                 // Find the skill root for this file
                 String skillRoot = null;
-                String flattenedRoot = null;
+                String skillDirName = null;
                 for (Map.Entry<String, String> root : skillRoots.entrySet()) {
                     if (relativePath.startsWith(root.getKey())) {
                         skillRoot = root.getKey();
-                        flattenedRoot = root.getValue();
+                        skillDirName = root.getValue();
                         break;
                     }
                 }
@@ -210,9 +222,8 @@ public class ExtractMojo extends AbstractMojo {
                     continue;
                 }
 
-                // Build target path: skillsjars__{flattenedRoot}/{remainder}
+                // Build target path: skillsjars__{skillDirName}/{remainder}
                 String remainder = relativePath.substring(skillRoot.length());
-                String skillDirName = String.format("skillsjars__%s", flattenedRoot);
                 Path skillDir = outputPath.resolve(skillDirName);
                 Path targetPath = skillDir.resolve(remainder);
 
