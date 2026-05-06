@@ -8,7 +8,6 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.MojoDescriptor;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.project.MavenProject;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -104,7 +103,6 @@ public class ExtractMojoTest {
         assertEquals("nested content", nestedContent);
     }
 
-    @NonNullDecl
     private static ExtractMojo createExtractMojo(File outputDir, String artifactId, File jarFile) {
         ExtractMojo mojo = new ExtractMojo();
         mojo.setDir(outputDir.getAbsolutePath());
