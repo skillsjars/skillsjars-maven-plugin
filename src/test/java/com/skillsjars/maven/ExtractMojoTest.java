@@ -398,6 +398,188 @@ public class ExtractMojoTest {
     }
 
     @Test
+    public void testUseSkillsNameAsDirectory() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        mojo.execute();
+
+        // Should use last segment "skill" instead of "skillsjars__org__repo__skill"
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "skill", "SKILL.md");
+        assertTrue("SKILL.md should exist under skill name directory", Files.exists(extractedSkillMd));
+
+        Path extractedFile = Paths.get(outputDir.getAbsolutePath(), "skill", "test.txt");
+        assertTrue("Extracted file should exist under skill name directory", Files.exists(extractedFile));
+
+        String content = new String(Files.readAllBytes(extractedFile));
+        assertEquals("test content", content);
+
+        Path nestedFile = Paths.get(outputDir.getAbsolutePath(), "skill", "foo", "nested.txt");
+        assertTrue("Nested file should exist under skill name directory", Files.exists(nestedFile));
+    }
+
+    @Test
+    public void testUseSkillsNameAsDirectoryWithNewPath() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill-new", "META-INF/skills/org/repo/zen/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill-new", jarFile);
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        mojo.execute();
+
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "zen", "SKILL.md");
+        assertTrue("SKILL.md should exist under 'zen' directory", Files.exists(extractedSkillMd));
+
+        Path extractedFile = Paths.get(outputDir.getAbsolutePath(), "zen", "test.txt");
+        assertTrue("Extracted file should exist under 'zen' directory", Files.exists(extractedFile));
+    }
+
+    @Test
+    public void testUseSkillsNameAsDirectoryConflictThrowsError() throws Exception {
+        // Two jars with different skill roots but same last segment "skill"
+        File jarFile1 = createTestSkillsJar("skill1", "META-INF/skills/org/repo1/skill/");
+        File jarFile2 = createTestSkillsJar("skill2", "META-INF/skills/org/repo2/skill/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        Artifact artifact1 = new DefaultArtifact(
+            "com.skillsjars", "skill1", "1.0.0",
+            Artifact.SCOPE_COMPILE, "jar", null, new DefaultArtifactHandler("jar")
+        );
+        artifact1.setFile(jarFile1);
+        artifacts.add(artifact1);
+
+        Artifact artifact2 = new DefaultArtifact(
+            "com.skillsjars", "skill2", "1.0.0",
+            Artifact.SCOPE_COMPILE, "jar", null, new DefaultArtifactHandler("jar")
+        );
+        artifact2.setFile(jarFile2);
+        artifacts.add(artifact2);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        try {
+            mojo.execute();
+            fail("Should have thrown MojoExecutionException for conflicting skill name directories");
+        } catch (MojoExecutionException e) {
+            assertTrue(e.getMessage().contains("conflict"));
+        }
+    }
+
+    @Test
+    public void testUseSkillsNameAsDirectoryNoConflict() throws Exception {
+        // Two jars with different last segments should not conflict
+        File jarFile1 = createTestSkillsJar("skill1", "META-INF/skills/org/repo/foo/");
+        File jarFile2 = createTestSkillsJar("skill2", "META-INF/skills/org/repo/bar/");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        MavenProject project = new MavenProject();
+        Set<Artifact> artifacts = new HashSet<>();
+
+        Artifact artifact1 = new DefaultArtifact(
+            "com.skillsjars", "skill1", "1.0.0",
+            Artifact.SCOPE_COMPILE, "jar", null, new DefaultArtifactHandler("jar")
+        );
+        artifact1.setFile(jarFile1);
+        artifacts.add(artifact1);
+
+        Artifact artifact2 = new DefaultArtifact(
+            "com.skillsjars", "skill2", "1.0.0",
+            Artifact.SCOPE_COMPILE, "jar", null, new DefaultArtifactHandler("jar")
+        );
+        artifact2.setFile(jarFile2);
+        artifacts.add(artifact2);
+
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        Path fooSkill = Paths.get(outputDir.getAbsolutePath(), "foo", "SKILL.md");
+        assertTrue("'foo' skill should exist", Files.exists(fooSkill));
+
+        Path barSkill = Paths.get(outputDir.getAbsolutePath(), "bar", "SKILL.md");
+        assertTrue("'bar' skill should exist", Files.exists(barSkill));
+    }
+
+    @Test
+    public void testUseSkillsNameAsDirectoryDeletesOldDirectory() throws Exception {
+        File outputDir = new File(testDir, "output");
+        assertTrue(outputDir.mkdirs());
+
+        // Create a pre-existing skill directory named "skill" that should be deleted
+        File preExistingSkillDir = new File(outputDir, "skill");
+        assertTrue(preExistingSkillDir.mkdirs());
+        File oldFile = new File(preExistingSkillDir, "old-file.txt");
+        Files.write(oldFile.toPath(), "should be deleted".getBytes());
+
+        // Pre-existing file at output root should not be deleted
+        File preExisting = new File(outputDir, "existing-file.txt");
+        Files.write(preExisting.toPath(), "should not be deleted".getBytes());
+
+        File jarFile = createTestSkillsJar("test-skill");
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        mojo.execute();
+
+        assertFalse("Old file should be deleted", oldFile.exists());
+        assertTrue("Pre-existing file should not be deleted", preExisting.exists());
+
+        Path newFile = Paths.get(outputDir.getAbsolutePath(), "skill", "test.txt");
+        assertTrue("New skill file should exist", Files.exists(newFile));
+    }
+
+    @Test
+    public void testUseSkillsNameAsDirectoryWithPluginDependencies() throws Exception {
+        File jarFile = createTestSkillsJar("plugin-skill", "META-INF/skills/org/repo/myplugin/");
+        File outputDir = new File(testDir, "output");
+
+        Artifact pluginArtifact = new DefaultArtifact(
+            "com.skillsjars", "plugin-skill", "1.0.0",
+            Artifact.SCOPE_COMPILE, "jar", null, new DefaultArtifactHandler("jar")
+        );
+        pluginArtifact.setFile(jarFile);
+
+        PluginDescriptor pluginDescriptor = new PluginDescriptor();
+        pluginDescriptor.setArtifacts(Collections.singletonList(pluginArtifact));
+
+        MojoDescriptor mojoDescriptor = new MojoDescriptor();
+        mojoDescriptor.setPluginDescriptor(pluginDescriptor);
+
+        MojoExecution mojoExecution = new MojoExecution(mojoDescriptor);
+
+        ExtractMojo mojo = new ExtractMojo();
+        mojo.setDir(outputDir.getAbsolutePath());
+        mojo.setUseSkillsNameAsDirectory(true);
+
+        MavenProject project = new MavenProject();
+        project.setArtifacts(new HashSet<>());
+        mojo.setProject(project);
+        mojo.setMojoExecution(mojoExecution);
+
+        mojo.execute();
+
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "myplugin", "SKILL.md");
+        assertTrue("SKILL.md from plugin dependency should exist under skill name directory", Files.exists(extractedSkillMd));
+    }
+
+    @Test
     public void testExtractsTransitiveDependencies() throws Exception {
         File directJar = createTestSkillsJar("direct-skill");
         File transitiveJar = createTestSkillsJar("transitive-skill", "META-INF/skills/transitive/repo/skill/");
