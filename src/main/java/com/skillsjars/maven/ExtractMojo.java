@@ -8,8 +8,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -156,7 +154,6 @@ public class ExtractMojo extends AbstractMojo {
         return true;
     }
 
-    @NonNullDecl
     private static Map<String, String> identifySkillRoots(File jarFile) throws IOException {
         Map<String, String> skillRoots = new HashMap<>();
         try (JarFile jar = new JarFile(jarFile)) {
