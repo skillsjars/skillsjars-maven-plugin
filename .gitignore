@@ -5,3 +5,4 @@ target/
 .project
 .settings/
 .mvn/wrapper/maven-wrapper.jar
+/.claude/settings.local.json
