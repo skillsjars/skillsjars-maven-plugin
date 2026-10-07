@@ -15,12 +15,12 @@
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.5</version>
+                <version>0.0.7</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.skillsjars</groupId>
                         <artifactId>anthropics__skills__pdf</artifactId>
-                        <version>2026_02_06-1ed29a0</version>
+                        <version>2026_02_25-3d59511</version>
                     </dependency>
                     <dependency>
                         <groupId>com.skillsjars</groupId>
