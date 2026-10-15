@@ -2,6 +2,11 @@
 
 If there are other open PRs for this work, update that PR instead of creating a new one.
 
+The run isn't finished until the Maintenance Routine's step 8 ("Improve the factory") is done:
+every finding it lists needs a link to the PR or issue you opened or updated for it in another
+repo (`jamesward/skills`, `jamesward/projects`, or a managed tool's repo), attached with `add_repo`.
+"Not filed" isn't an allowed outcome; if filing fails, quote the error. Do it before merging.
+
 Whenever a step says to stop, or the run can't finish: revert your uncommitted edits
 (`git checkout -- .`), don't push a branch or open a PR, and end with a report that quotes what
 failed. A cloud session's Stop hook asks you to commit uncommitted changes; don't commit unvalidated
