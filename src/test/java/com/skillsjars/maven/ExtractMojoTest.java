@@ -103,13 +103,51 @@ public class ExtractMojoTest {
         assertEquals("nested content", nestedContent);
     }
 
+    @Test
+    public void testRunOnlyAtExecutionRootSkipsNonRootProject() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+        mojo.setRunOnlyAtExecutionRoot(true);
+
+        mojo.execute();
+
+        assertFalse("Output dir should not exist", outputDir.exists());
+    }
+
+    @Test
+    public void testRunOnlyAtExecutionRootExtractsAtExecutionRoot() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+        mojo.setRunOnlyAtExecutionRoot(true);
+        MavenProject project = new MavenProject();
+        project.setArtifacts(new HashSet<>(Collections.singleton(createArtifact("test-skill", jarFile))));
+        project.setExecutionRoot(true);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        Path extractedSkillMd = Paths.get(outputDir.getAbsolutePath(), "skillsjars__org__repo__skill", "SKILL.md");
+        assertTrue("SKILL.md should exist", Files.exists(extractedSkillMd));
+    }
+
     private static ExtractMojo createExtractMojo(File outputDir, String artifactId, File jarFile) {
         ExtractMojo mojo = new ExtractMojo();
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
         Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(createArtifact(artifactId, jarFile));
 
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+        return mojo;
+    }
+
+    private static Artifact createArtifact(String artifactId, File jarFile) {
         Artifact artifact = new DefaultArtifact(
             "com.skillsjars",
                 artifactId,
@@ -120,11 +158,7 @@ public class ExtractMojoTest {
             new DefaultArtifactHandler("jar")
         );
         artifact.setFile(jarFile);
-        artifacts.add(artifact);
-
-        project.setArtifacts(artifacts);
-        mojo.setProject(project);
-        return mojo;
+        return artifact;
     }
 
     @Test
