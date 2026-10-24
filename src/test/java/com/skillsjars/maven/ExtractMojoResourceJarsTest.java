@@ -166,6 +166,7 @@ public class ExtractMojoResourceJarsTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         for (File jarFile : jarFiles) {

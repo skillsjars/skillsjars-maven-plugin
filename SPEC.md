@@ -33,7 +33,7 @@ There is a Maven task `skillsjars:extract` which does the extraction. The `skill
 
 The parameter for the extract directory is `dir` so users run something like `mvn skillsjars:extract -Ddir=.kiro/skills`. If the user doesn't provide a directory, the plugin fails with an error.
 
-In multi-module builds where the plugin is inherited from a parent POM, the extraction runs in every module. Setting the `runOnlyAtExecutionRoot` parameter (`-DrunOnlyAtExecutionRoot=true`, default `false`) skips the extraction in every module except the execution root (the project Maven was invoked on).
+In multi-module builds, the extraction runs only in the execution root (the project Maven was invoked on) and is skipped in every other module.
 
 The plugin collects all `com.skillsjars` group dependencies from both project dependencies and plugin dependencies. SkillsJars can have transitive dependencies so the plugin looks in the classpath for all dependencies in the `com.skillsjars` group.
 

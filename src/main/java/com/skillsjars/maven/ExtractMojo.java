@@ -28,9 +28,6 @@ public class ExtractMojo extends AbstractMojo {
     @Parameter(property = "useSkillsNameAsDirectory", defaultValue = "false")
     private Boolean useSkillsNameAsDirectory;
 
-    @Parameter(property = "runOnlyAtExecutionRoot", defaultValue = "false")
-    private Boolean runOnlyAtExecutionRoot;
-
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
 
@@ -44,10 +41,6 @@ public class ExtractMojo extends AbstractMojo {
 
     void setUseSkillsNameAsDirectory(Boolean useSkillsNameAsDirectory) {
         this.useSkillsNameAsDirectory = useSkillsNameAsDirectory;
-    }
-
-    void setRunOnlyAtExecutionRoot(Boolean runOnlyAtExecutionRoot) {
-        this.runOnlyAtExecutionRoot = runOnlyAtExecutionRoot;
     }
 
     void setProject(MavenProject project) {
@@ -65,8 +58,8 @@ public class ExtractMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        if (Boolean.TRUE.equals(runOnlyAtExecutionRoot) && !project.isExecutionRoot()) {
-            getLog().info(String.format("Skipping %s: not the execution root (runOnlyAtExecutionRoot=true)", project.getArtifactId()));
+        if (!project.isExecutionRoot()) {
+            getLog().info(String.format("Skipping %s: not the execution root", project.getArtifactId()));
             return;
         }
 
