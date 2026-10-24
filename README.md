@@ -32,6 +32,8 @@ Extract SkillsJars from dependencies to a directory for AI agents.
     mvn skillsjars:extract -Ddir=.kiro/skills
     ```
 
+In multi-module builds, the extraction runs only once, in the execution root (the project Maven was invoked on); all other modules are skipped.
+
 ## Packaging SkillsJars
 
 Create SkillsJars from your project's skills directory.

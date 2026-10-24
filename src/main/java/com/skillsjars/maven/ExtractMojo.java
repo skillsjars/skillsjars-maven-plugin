@@ -58,6 +58,11 @@ public class ExtractMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        if (!project.isExecutionRoot()) {
+            getLog().info(String.format("Skipping %s: not the execution root", project.getArtifactId()));
+            return;
+        }
+
         if (dir == null || dir.trim().isEmpty()) {
             throw new MojoExecutionException("The 'dir' parameter is required. Use -Ddir=<path>");
         }
