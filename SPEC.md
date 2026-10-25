@@ -33,6 +33,8 @@ There is a Maven task `skillsjars:extract` which does the extraction. The `skill
 
 The parameter for the extract directory is `dir` so users run something like `mvn skillsjars:extract -Ddir=.kiro/skills`. If the user doesn't provide a directory, the plugin fails with an error.
 
+In multi-module builds, the extraction runs only in the execution root (the project Maven was invoked on) and is skipped in every other module.
+
 The plugin collects all `com.skillsjars` group dependencies from both project dependencies and plugin dependencies. SkillsJars can have transitive dependencies so the plugin looks in the classpath for all dependencies in the `com.skillsjars` group.
 
 The structure inside SkillsJars is a path like `META-INF/skills/ORG/REPO/SKILL` or `META-INF/resources/skills/ORG/REPO/SKILL`. Only files under a directory containing a `SKILL.md` marker are extracted. The extracted output drops the `META-INF/skills` (or `META-INF/resources/skills`) prefix and flattens the skill root path with `__` separators under a `skillsjars__` prefix in the user-specified directory. For example, `META-INF/skills/org/repo/skill/test.txt` extracts to `<dir>/skillsjars__org__repo__skill/test.txt`.

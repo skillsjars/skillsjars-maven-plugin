@@ -47,6 +47,7 @@ public class ExtractMojoTest {
     public void testExtractWithoutDirParameterFails() throws Exception {
         ExtractMojo mojo = new ExtractMojo();
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         project.setArtifacts(new HashSet<>());
         mojo.setProject(project);
         
@@ -103,13 +104,37 @@ public class ExtractMojoTest {
         assertEquals("nested content", nestedContent);
     }
 
+    @Test
+    public void testSkipsNonExecutionRootProject() throws Exception {
+        File jarFile = createTestSkillsJar("test-skill");
+        File outputDir = new File(testDir, "output");
+
+        ExtractMojo mojo = createExtractMojo(outputDir, "test-skill", jarFile);
+        MavenProject project = new MavenProject();
+        project.setArtifacts(new HashSet<>(Collections.singleton(createArtifact("test-skill", jarFile))));
+        project.setExecutionRoot(false);
+        mojo.setProject(project);
+
+        mojo.execute();
+
+        assertFalse("Output dir should not exist", outputDir.exists());
+    }
+
     private static ExtractMojo createExtractMojo(File outputDir, String artifactId, File jarFile) {
         ExtractMojo mojo = new ExtractMojo();
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(createArtifact(artifactId, jarFile));
 
+        project.setArtifacts(artifacts);
+        mojo.setProject(project);
+        return mojo;
+    }
+
+    private static Artifact createArtifact(String artifactId, File jarFile) {
         Artifact artifact = new DefaultArtifact(
             "com.skillsjars",
                 artifactId,
@@ -120,11 +145,7 @@ public class ExtractMojoTest {
             new DefaultArtifactHandler("jar")
         );
         artifact.setFile(jarFile);
-        artifacts.add(artifact);
-
-        project.setArtifacts(artifacts);
-        mojo.setProject(project);
-        return mojo;
+        return artifact;
     }
 
     @Test
@@ -137,6 +158,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         Artifact artifact1 = new DefaultArtifact(
@@ -202,6 +224,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         project.setArtifacts(new HashSet<>());
         mojo.setProject(project);
         mojo.setMojoExecution(mojoExecution);
@@ -259,6 +282,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         // Add a regular jar artifact
@@ -307,6 +331,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         Artifact artifact1 = new DefaultArtifact(
@@ -356,6 +381,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         // Compile scope dependency
@@ -450,6 +476,7 @@ public class ExtractMojoTest {
         mojo.setUseSkillsNameAsDirectory(true);
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         Artifact artifact1 = new DefaultArtifact(
@@ -489,6 +516,7 @@ public class ExtractMojoTest {
         mojo.setUseSkillsNameAsDirectory(true);
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         Set<Artifact> artifacts = new HashSet<>();
 
         Artifact artifact1 = new DefaultArtifact(
@@ -569,6 +597,7 @@ public class ExtractMojoTest {
         mojo.setUseSkillsNameAsDirectory(true);
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         project.setArtifacts(new HashSet<>());
         mojo.setProject(project);
         mojo.setMojoExecution(mojoExecution);
@@ -589,6 +618,7 @@ public class ExtractMojoTest {
         mojo.setDir(outputDir.getAbsolutePath());
 
         MavenProject project = new MavenProject();
+        project.setExecutionRoot(true);
         
         // Create direct dependency
         Artifact directArtifact = new DefaultArtifact(
