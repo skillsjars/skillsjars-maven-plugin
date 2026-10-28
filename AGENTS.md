@@ -19,3 +19,8 @@ Follow the `zen-of-projects` Skill; this file records only project-specific fact
 ## Exceptions to zen-of-projects
 
 - **No `com.jamesward:skills` dependency:** it is the SkillsJars Maven plugin itself, and its `example/` build demonstrates third-party Skills. `.factory/MAINTENANCE.md` reads the published Skill from a clone of https://github.com/jamesward/skills instead. Don't add the dependency.
+
+## Maintenance notes
+
+- The root build has no SkillsJars plugin, so `skillsjars:extract` only applies to `example/`, and there it needs `-Ddir=<path>` because the example sets no `dir`.
+- The first `./mvnw` call can fail with `wget: Failed to fetch ...apache-maven-<v>-bin.zip` when Maven Central answers HTTP 429; run it again.
