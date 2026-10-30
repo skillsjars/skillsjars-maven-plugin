@@ -15,7 +15,7 @@
             <plugin>
                 <groupId>com.skillsjars</groupId>
                 <artifactId>maven-plugin</artifactId>
-                <version>0.0.7</version>
+                <version>0.0.8</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.skillsjars</groupId>
@@ -30,7 +30,7 @@
                     <dependency>
                         <groupId>com.jamesward</groupId>
                         <artifactId>skills</artifactId>
-                        <version>0.0.1</version>
+                        <version>0.0.21</version>
                     </dependency>
                 </dependencies>
             </plugin>
